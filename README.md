@@ -38,7 +38,8 @@ pre_install do |installer|
 end
 ```
 
-This will achieve two things:  
+This will achieve two things:
+
 1. When a pod with vendored `.framework`-s is added, they will be converted to `.xcframework`-s.
 2. Upon each `pod install`, the corresponding pod specifications will be patched so that the project will consume the `.xcframework`-s correctly.
 
@@ -46,7 +47,8 @@ This will achieve two things:
 Sort of. The software is provided as is, with no guarantees of correctnes. It's meant to be a workaround. For the correct solution, ask the framework vendor for an update. However, PRs are welcome.
 
 ## How does it work?
-An XCFramework is basically a bundle of folders.  
+An XCFramework is basically a bundle of folders.
+
 The tool will create the folder and its subfolders, write the correct `Info.plist`, and clean up the relevant fat binary files so that they contain only the relevant architectures.
 
 Additionally, the tool will create a new, patched `arm64` binary for the iOS Simulator. For that, it uses the code and knowledge of [Bogo Giertler](https://github.com/bogo). The binary patching code is embedded in the gem. For more info, check Bogo's blog for the posts on how to patch a [static library](https://bogo.wtf/arm64-to-sim.html) and a [dynamic library](https://bogo.wtf/arm64-to-sim-dylibs.html).
