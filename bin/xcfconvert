@@ -1,0 +1,12 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'bundler/setup'
+require 'xcframework_converter'
+
+if ARGV.empty?
+  warn 'Usage: xcfconvert <path/to/Framework.framework>'
+  exit 1
+end
+
+XCFrameworkConverter.convert_framework_to_xcframework(Pathname.new(ARGV[0]).realpath)

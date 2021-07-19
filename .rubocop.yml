@@ -1,0 +1,24 @@
+AllCops:
+  NewCops: disable
+
+Metrics/ClassLength:
+  Max: 1000
+Style/StringLiterals:
+  Enabled: true
+  EnforcedStyle: single_quotes
+
+Style/StringLiteralsInInterpolation:
+  Enabled: true
+  EnforcedStyle: single_quotes
+
+Metrics/MethodLength:
+  Max: 30
+
+Layout/LineLength:
+  Max: 150
+  Exclude:
+    - 'spec/**/*'
+
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
