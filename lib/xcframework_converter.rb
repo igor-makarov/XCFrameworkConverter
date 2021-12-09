@@ -17,30 +17,34 @@ module XCFrameworkConverter
   class << self
     def convert_frameworks_to_xcframeworks!(installer)
       installer.analysis_result.specifications.each do |spec|
-        next unless spec.attributes_hash['vendored_frameworks']
+        next if spec.source && spec.local?
 
-        frameworks = Array(spec.attributes_hash['vendored_frameworks'])
-        unconverted_frameworks = frameworks.select { |f| File.extname(f) == '.framework' }
-        next if unconverted_frameworks.empty?
-        next if spec.local?
+        frameworks_to_convert = spec.available_platforms.map do |platform|
+          consumer = Pod::Specification::Consumer.new(spec, platform)
+          before_rename = consumer.vendored_frameworks.select { |f| File.extname(f) == '.framework' }
+          next [] if before_rename.empty?
+
+          after_rename = before_rename.map { |f| Pathname.new(f).sub_ext('.xcframework').to_s }
+          proxy = Pod::Specification::DSL::PlatformProxy.new(spec, platform.symbolic_name)
+          proxy.vendored_frameworks = consumer.vendored_frameworks - before_rename + after_rename
+          before_rename
+        end.flatten.uniq
+        
+        next if frameworks_to_convert.empty?
 
         pod_path = installer.sandbox.pod_dir(Pod::Specification.root_name(spec.name))
-        convert_xcframeworks_if_present(pod_path)
+        convert_xcframeworks_if_present(frameworks_to_convert.map { |f| pod_path.join(f) })
 
-        converted_frameworks = unconverted_frameworks.map do |path|
-          Pathname.new(path).sub_ext('.xcframework').to_s
-        end
-        spec.attributes_hash['vendored_frameworks'] = frameworks - unconverted_frameworks + converted_frameworks
         # some pods put these as a way to NOT support arm64 sim
+        # may stop working if a pod decides to put these in a platform proxy
         spec.attributes_hash['pod_target_xcconfig']&.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
         spec.attributes_hash['user_target_xcconfig']&.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
       end
     end
 
-    def convert_xcframeworks_if_present(pod_path)
-      unconverted_paths = Dir[pod_path.join('**/*.framework')] - Dir[pod_path.join('**/*.xcframework/**/*')]
-      unconverted_paths.each do |path|
-        convert_framework_to_xcframework(path)
+    def convert_xcframeworks_if_present(frameworks_to_convert)
+      frameworks_to_convert.each do |path|
+        convert_framework_to_xcframework(path) if Dir.exist?(path)
       end
     end
 
