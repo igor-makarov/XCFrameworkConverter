@@ -29,7 +29,7 @@ module XCFrameworkConverter
           proxy.vendored_frameworks = consumer.vendored_frameworks - before_rename + after_rename
           before_rename
         end.flatten.uniq
-        
+
         next if frameworks_to_convert.empty?
 
         pod_path = installer.sandbox.pod_dir(Pod::Specification.root_name(spec.name))
