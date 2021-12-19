@@ -1,6 +1,9 @@
 AllCops:
   NewCops: disable
 
+Lint/MissingCopEnableDirective:
+  Enabled: false
+
 Metrics/ClassLength:
   Max: 1000
 Style/StringLiterals:

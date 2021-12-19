@@ -7,7 +7,7 @@ require 'cocoapods/xcode/xcframework'
 require 'fileutils'
 require 'xcodeproj'
 
-# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/ModuleLength, Metrics/PerceivedComplexity
 
 # Converts a framework (static or dynamic) to XCFrameworks, adding an arm64 simulator patch.
 # For more info:
@@ -136,5 +136,3 @@ module XCFrameworkConverter
     end
   end
 end
-
-# rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
