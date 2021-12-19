@@ -64,7 +64,7 @@ module XCFrameworkConverter
       end
       Xcodeproj::Plist.write_to_path(plist, xcframework_path.join('Info.plist'))
       FileUtils.rm_rf(path)
-      final_framework = Pod::Xcode::XCFramework.new(xcframework_path.realpath)
+      final_framework = Pod::Xcode::XCFramework.new(File.basename(path, '.framework'), xcframework_path.realpath)
       final_framework.slices.each do |slice|
         patch_arm_binary(slice) if slice.platform == :ios && slice.platform_variant == :simulator
         cleanup_unused_archs(slice)

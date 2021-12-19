@@ -23,6 +23,6 @@ Gem::Specification.new do |spec|
   spec.executables   = ['xcfconvert']
   spec.require_paths = ['lib']
 
-  spec.add_runtime_dependency 'cocoapods', '>= 1.10.0', '~> 1'
+  spec.add_runtime_dependency 'cocoapods', '>= 1.11.0', '~> 1'
   spec.add_runtime_dependency 'xcodeproj', '>= 1.20.0', '~> 1'
 end
