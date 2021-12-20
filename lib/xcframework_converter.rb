@@ -7,7 +7,7 @@ require 'cocoapods/xcode/xcframework'
 require 'fileutils'
 require 'xcodeproj'
 
-# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/ModuleLength, Metrics/PerceivedComplexity
 
 # Converts a framework (static or dynamic) to XCFrameworks, adding an arm64 simulator patch.
 # For more info:
@@ -64,10 +64,18 @@ module XCFrameworkConverter
       end
       Xcodeproj::Plist.write_to_path(plist, xcframework_path.join('Info.plist'))
       FileUtils.rm_rf(path)
-      final_framework = Pod::Xcode::XCFramework.new(xcframework_path.realpath)
+      final_framework = open_xcframework(xcframework_path)
       final_framework.slices.each do |slice|
         patch_arm_binary(slice) if slice.platform == :ios && slice.platform_variant == :simulator
         cleanup_unused_archs(slice)
+      end
+    end
+
+    def open_xcframework(xcframework_path)
+      if Pod::Xcode::XCFramework.instance_method(:initialize).arity == 2
+        Pod::Xcode::XCFramework.new(File.basename(xcframework_path), xcframework_path.realpath)
+      else
+        Pod::Xcode::XCFramework.new(xcframework_path.realpath)
       end
     end
 
@@ -128,5 +136,3 @@ module XCFrameworkConverter
     end
   end
 end
-
-# rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
