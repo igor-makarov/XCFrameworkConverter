@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative 'xcframework_converter/arm_patcher'
 require_relative 'xcframework_converter/creation'
 require_relative 'xcframework_converter/patching'
 require_relative 'xcframework_converter/version'
-require_relative 'xcframework_converter/xcframework_ext'
 
 require 'cocoapods'
 require 'cocoapods/xcode/xcframework'

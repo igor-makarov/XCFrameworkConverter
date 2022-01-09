@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'arm_patcher'
 require_relative 'xcframework_ext'
 
 require 'cocoapods'
