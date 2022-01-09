@@ -43,7 +43,7 @@ module XCFrameworkConverter
       end
 
       def arm2sim_path
-        Pathname.new(__FILE__).dirname.join('arm2sim.swift')
+        Pathname.new(__FILE__).dirname.join('../arm2sim.swift')
       end
 
       def patch_arm_binary_static(slice)
