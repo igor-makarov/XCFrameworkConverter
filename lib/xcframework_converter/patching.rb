@@ -31,7 +31,7 @@ module XCFrameworkConverter
 
       patched_arm_slice_identifier = 'ios-arm64-simulator'
 
-      STDERR.puts "Will patch #{xcframework_path}: #{original_arm_slice_identifier} -> #{patched_arm_slice_identifier}"
+      warn "Will patch #{xcframework_path}: #{original_arm_slice_identifier} -> #{patched_arm_slice_identifier}"
 
       plist = xcframework.plist
       slice_plist_to_add = plist['AvailableLibraries'].find { |s| s['LibraryIdentifier'] == original_arm_slice_identifier }.dup
