@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 require_relative 'xcframework_converter/arm_patcher'
-require_relative 'xcframework_converter/version'
 require_relative 'xcframework_converter/creation'
+require_relative 'xcframework_converter/patching'
+require_relative 'xcframework_converter/version'
 require_relative 'xcframework_converter/xcframework_ext'
 
 require 'cocoapods'
@@ -24,6 +25,14 @@ module XCFrameworkConverter
 
         pod_path = installer.sandbox.pod_dir(Pod::Specification.root_name(spec.name))
 
+        xcframeworks_to_patch = spec.available_platforms.map do |platform|
+          consumer = Pod::Specification::Consumer.new(spec, platform)
+          consumer.vendored_frameworks.select { |f| File.extname(f) == '.xcframework' }
+                  .map { |f| pod_path.join(f) }
+        end.flatten.uniq
+
+        patch_xcframeworks_if_needed(spec, xcframeworks_to_patch)
+
         frameworks_to_convert = spec.available_platforms.map do |platform|
           consumer = Pod::Specification::Consumer.new(spec, platform)
           before_rename = consumer.vendored_frameworks.select { |f| File.extname(f) == '.framework' }
@@ -35,17 +44,24 @@ module XCFrameworkConverter
           before_rename.map { |f| pod_path.join(f) }
         end.flatten.uniq
 
-        unless frameworks_to_convert.empty?
-          convert_xcframeworks_if_present(frameworks_to_convert)
-          remove_troublesome_xcconfig_items(spec)
-        end
+        convert_xcframeworks_if_present(spec, frameworks_to_convert)
       end
     end
 
-    def convert_xcframeworks_if_present(frameworks_to_convert)
+    def convert_xcframeworks_if_present(spec, frameworks_to_convert)
       frameworks_to_convert.each do |path|
         convert_framework_to_xcframework(path) if Dir.exist?(path)
       end
+      remove_troublesome_xcconfig_items(spec) unless frameworks_to_convert.empty?
+    end
+
+    def patch_xcframeworks_if_needed(spec, xcframeworks)
+      patched = xcframeworks.map do |path|
+        next nil unless Dir.exist?(path)
+
+        patch_xcframework(path)
+      end.compact
+      remove_troublesome_xcconfig_items(spec) unless patched.empty?
     end
 
     def remove_troublesome_xcconfig_items(spec)
