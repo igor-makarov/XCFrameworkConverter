@@ -8,7 +8,7 @@ require 'cocoapods/xcode/xcframework'
 require 'fileutils'
 require 'xcodeproj'
 
-# rubocop:disable Metrics/AbcSize
+# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
 # Converts a framework (static or dynamic) to an XCFramework, adding an arm64 simulator patch.
 # For more info:
@@ -25,8 +25,32 @@ module XCFrameworkConverter
         slice.supported_archs.include?('arm64')
       end
 
-      # require 'pry'; binding.pry
-      STDERR.puts "Will patch #{xcframework_path}"
+      original_arm_slice_identifier = xcframework.slices.find do |slice|
+        slice.platform == :ios && slice.supported_archs.include?('arm64')
+      end.identifier
+
+      patched_arm_slice_identifier = 'ios-arm64-simulator'
+
+      STDERR.puts "Will patch #{xcframework_path}: #{original_arm_slice_identifier} -> #{patched_arm_slice_identifier}"
+
+      plist = xcframework.plist
+      slice_plist_to_add = plist['AvailableLibraries'].find { |s| s['LibraryIdentifier'] == original_arm_slice_identifier }.dup
+      slice_plist_to_add['LibraryIdentifier'] = patched_arm_slice_identifier
+      slice_plist_to_add['SupportedArchitectures'] = ['arm64']
+      slice_plist_to_add['SupportedPlatformVariant'] = 'simulator'
+      plist['AvailableLibraries'] << slice_plist_to_add
+
+      FileUtils.cp_r(xcframework_path.join(original_arm_slice_identifier), xcframework_path.join(patched_arm_slice_identifier))
+
+      Xcodeproj::Plist.write_to_path(plist, xcframework_path.join('Info.plist'))
+
+      xcframework = Pod::Xcode::XCFramework.open_xcframework(xcframework_path)
+
+      slice = xcframework.slices.find { |s| s.identifier == patched_arm_slice_identifier }
+
+      ArmPatcher.patch_arm_binary(slice)
+      ArmPatcher.cleanup_unused_archs(slice)
+
       xcframework_path
     end
   end
