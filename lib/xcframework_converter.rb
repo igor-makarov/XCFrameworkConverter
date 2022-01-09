@@ -2,7 +2,8 @@
 
 require_relative 'xcframework_converter/arm_patcher'
 require_relative 'xcframework_converter/version'
-require_relative 'xcframework_converter/xcframework_creator'
+require_relative 'xcframework_converter/creation'
+require_relative 'xcframework_converter/xcframework_ext'
 
 require 'cocoapods'
 require 'cocoapods/xcode/xcframework'
@@ -43,7 +44,7 @@ module XCFrameworkConverter
 
     def convert_xcframeworks_if_present(frameworks_to_convert)
       frameworks_to_convert.each do |path|
-        XCFrameworkCreator.convert_framework_to_xcframework(path) if Dir.exist?(path)
+        convert_framework_to_xcframework(path) if Dir.exist?(path)
       end
     end
 
