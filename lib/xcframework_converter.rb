@@ -67,6 +67,8 @@ module XCFrameworkConverter
       # may stop working if a pod decides to put these in a platform proxy
       spec.attributes_hash['pod_target_xcconfig']&.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
       spec.attributes_hash['user_target_xcconfig']&.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
+      spec.attributes_hash['pod_target_xcconfig']&.delete('VALID_ARCHS[sdk=iphonesimulator*]')
+      spec.attributes_hash['user_target_xcconfig']&.delete('VALID_ARCHS[sdk=iphonesimulator*]')
     end
   end
 end
