@@ -21,6 +21,8 @@ module XCFrameworkConverter
       installer.analysis_result.specifications.each do |spec|
         next if spec.source && spec.local?
 
+        pod_path = installer.sandbox.pod_dir(Pod::Specification.root_name(spec.name))
+
         frameworks_to_convert = spec.available_platforms.map do |platform|
           consumer = Pod::Specification::Consumer.new(spec, platform)
           before_rename = consumer.vendored_frameworks.select { |f| File.extname(f) == '.framework' }
@@ -29,18 +31,13 @@ module XCFrameworkConverter
           after_rename = before_rename.map { |f| Pathname.new(f).sub_ext('.xcframework').to_s }
           proxy = Pod::Specification::DSL::PlatformProxy.new(spec, platform.symbolic_name)
           proxy.vendored_frameworks = consumer.vendored_frameworks - before_rename + after_rename
-          before_rename
+          before_rename.map { |f| pod_path.join(f) }
         end.flatten.uniq
 
-        next if frameworks_to_convert.empty?
-
-        pod_path = installer.sandbox.pod_dir(Pod::Specification.root_name(spec.name))
-        convert_xcframeworks_if_present(frameworks_to_convert.map { |f| pod_path.join(f) })
-
-        # some pods put these as a way to NOT support arm64 sim
-        # may stop working if a pod decides to put these in a platform proxy
-        spec.attributes_hash['pod_target_xcconfig']&.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
-        spec.attributes_hash['user_target_xcconfig']&.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
+        unless frameworks_to_convert.empty?
+          convert_xcframeworks_if_present(frameworks_to_convert)
+          remove_troublesome_xcconfig_items(spec)
+        end
       end
     end
 
@@ -48,6 +45,13 @@ module XCFrameworkConverter
       frameworks_to_convert.each do |path|
         XCFrameworkCreator.convert_framework_to_xcframework(path) if Dir.exist?(path)
       end
+    end
+
+    def remove_troublesome_xcconfig_items(spec)
+      # some pods put these as a way to NOT support arm64 sim
+      # may stop working if a pod decides to put these in a platform proxy
+      spec.attributes_hash['pod_target_xcconfig']&.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
+      spec.attributes_hash['user_target_xcconfig']&.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
     end
   end
 end
