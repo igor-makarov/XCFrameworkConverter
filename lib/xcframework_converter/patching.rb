@@ -40,6 +40,7 @@ module XCFrameworkConverter
       slice_plist_to_add['SupportedPlatformVariant'] = 'simulator'
       plist['AvailableLibraries'] << slice_plist_to_add
 
+      FileUtils.rm_rf(xcframework_path.join(patched_arm_slice_identifier))
       FileUtils.cp_r(xcframework_path.join(original_arm_slice_identifier), xcframework_path.join(patched_arm_slice_identifier))
 
       Xcodeproj::Plist.write_to_path(plist, xcframework_path.join('Info.plist'))
