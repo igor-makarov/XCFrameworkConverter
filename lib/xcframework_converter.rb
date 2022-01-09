@@ -43,6 +43,8 @@ module XCFrameworkConverter
         end.flatten.uniq
 
         convert_xcframeworks_if_present(spec, frameworks_to_convert)
+
+        remove_troublesome_xcconfig_items(spec)
       end
     end
 
@@ -50,16 +52,12 @@ module XCFrameworkConverter
       frameworks_to_convert.each do |path|
         convert_framework_to_xcframework(path) if Dir.exist?(path)
       end
-      remove_troublesome_xcconfig_items(spec) unless frameworks_to_convert.empty?
     end
 
     def patch_xcframeworks_if_needed(spec, xcframeworks)
-      patched = xcframeworks.map do |path|
-        next nil unless Dir.exist?(path)
-
-        patch_xcframework(path)
-      end.compact
-      remove_troublesome_xcconfig_items(spec) unless patched.empty?
+      xcframeworks.each do |path|
+        patch_xcframework(path) if Dir.exist?(path)
+      end
     end
 
     def remove_troublesome_xcconfig_items(spec)
