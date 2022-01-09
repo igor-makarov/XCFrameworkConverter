@@ -29,7 +29,7 @@ module XCFrameworkConverter
                   .map { |f| pod_path.join(f) }
         end.flatten.uniq
 
-        patch_xcframeworks_if_needed(spec, xcframeworks_to_patch)
+        patch_xcframeworks_if_needed(xcframeworks_to_patch)
 
         frameworks_to_convert = spec.available_platforms.map do |platform|
           consumer = Pod::Specification::Consumer.new(spec, platform)
@@ -42,19 +42,19 @@ module XCFrameworkConverter
           before_rename.map { |f| pod_path.join(f) }
         end.flatten.uniq
 
-        convert_xcframeworks_if_present(spec, frameworks_to_convert)
+        convert_xcframeworks_if_present(frameworks_to_convert)
 
         remove_troublesome_xcconfig_items(spec)
       end
     end
 
-    def convert_xcframeworks_if_present(spec, frameworks_to_convert)
+    def convert_xcframeworks_if_present(frameworks_to_convert)
       frameworks_to_convert.each do |path|
         convert_framework_to_xcframework(path) if Dir.exist?(path)
       end
     end
 
-    def patch_xcframeworks_if_needed(spec, xcframeworks)
+    def patch_xcframeworks_if_needed(xcframeworks)
       xcframeworks.each do |path|
         patch_xcframework(path) if Dir.exist?(path)
       end
