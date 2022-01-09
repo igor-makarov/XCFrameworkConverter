@@ -2,6 +2,7 @@
 
 require_relative 'xcframework_converter/arm_patcher'
 require_relative 'xcframework_converter/version'
+require_relative 'xcframework_converter/xcframework_creator'
 
 require 'cocoapods'
 require 'cocoapods/xcode/xcframework'
@@ -45,38 +46,7 @@ module XCFrameworkConverter
 
     def convert_xcframeworks_if_present(frameworks_to_convert)
       frameworks_to_convert.each do |path|
-        convert_framework_to_xcframework(path) if Dir.exist?(path)
-      end
-    end
-
-    def plist_template_path
-      Pathname.new(__FILE__).dirname.join('xcframework_template.plist')
-    end
-
-    def convert_framework_to_xcframework(path)
-      plist = Xcodeproj::Plist.read_from_path(plist_template_path)
-      xcframework_path = Pathname.new(path).sub_ext('.xcframework')
-      xcframework_path.mkdir
-      plist['AvailableLibraries'].each do |slice|
-        slice_path = xcframework_path.join(slice['LibraryIdentifier'])
-        slice_path.mkdir
-        slice['LibraryPath'] = File.basename(path)
-        FileUtils.cp_r(path, slice_path)
-      end
-      Xcodeproj::Plist.write_to_path(plist, xcframework_path.join('Info.plist'))
-      FileUtils.rm_rf(path)
-      final_framework = open_xcframework(xcframework_path)
-      final_framework.slices.each do |slice|
-        ArmPatcher.patch_arm_binary(slice) if slice.platform == :ios && slice.platform_variant == :simulator
-        ArmPatcher.cleanup_unused_archs(slice)
-      end
-    end
-
-    def open_xcframework(xcframework_path)
-      if Pod::Xcode::XCFramework.instance_method(:initialize).arity == 2
-        Pod::Xcode::XCFramework.new(File.basename(xcframework_path), xcframework_path.realpath)
-      else
-        Pod::Xcode::XCFramework.new(xcframework_path.realpath)
+        XCFrameworkCreator.convert_framework_to_xcframework(path) if Dir.exist?(path)
       end
     end
   end
