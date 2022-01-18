@@ -19,8 +19,6 @@ module XCFrameworkConverter
   class << self
     def convert_frameworks_to_xcframeworks!(installer)
       installer.analysis_result.specifications.each do |spec|
-        next if spec.source && spec.local?
-
         pod_path = installer.sandbox.pod_dir(Pod::Specification.root_name(spec.name))
 
         xcframeworks_to_patch = spec.available_platforms.map do |platform|
