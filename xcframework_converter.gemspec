@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
   spec.files = %w[README.md] + Dir['lib/**/*.{plist,rb,swift}']
-  spec.executables   = ['xcfconvert', 'xcfpatch']
+  spec.executables   = %w[xcfconvert xcfpatch]
   spec.require_paths = ['lib']
 
   spec.add_runtime_dependency 'cocoapods', '~> 1.10'
