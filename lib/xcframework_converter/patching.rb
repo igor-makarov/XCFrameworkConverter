@@ -25,29 +25,36 @@ module XCFrameworkConverter
         slice.supported_archs.include?('arm64')
       end
 
-      original_arm_slice_identifier = xcframework.slices.find do |slice|
+      original_arm_slice = xcframework.slices.find do |slice|
         slice.platform == :ios && slice.supported_archs.include?('arm64')
-      end.identifier
+      end
 
-      patched_arm_slice_identifier = 'ios-arm64-simulator'
+      simulator_slice = xcframework.slices.find do |slice|
+        slice.platform == :ios && slice.platform_variant == :simulator
+      end
 
-      warn "Will patch #{xcframework_path}: #{original_arm_slice_identifier} -> #{patched_arm_slice_identifier}"
+      patched_simulator_slice_identifier = simulator_slice.identifier.gsub('-simulator', '_arm64-simulator')
+
+      warn "Will patch #{xcframework_path}: #{patched_simulator_slice_identifier}:= " \
+           "#{simulator_slice.identifier} + patched(#{original_arm_slice.identifier})"
 
       plist = xcframework.plist
-      slice_plist_to_add = plist['AvailableLibraries'].find { |s| s['LibraryIdentifier'] == original_arm_slice_identifier }.dup
-      slice_plist_to_add['LibraryIdentifier'] = patched_arm_slice_identifier
-      slice_plist_to_add['SupportedArchitectures'] = ['arm64']
-      slice_plist_to_add['SupportedPlatformVariant'] = 'simulator'
-      plist['AvailableLibraries'] << slice_plist_to_add
+      slice_plist_to_edit = plist['AvailableLibraries'].find { |s| s['LibraryIdentifier'] == simulator_slice.identifier }
+      slice_plist_to_edit['LibraryIdentifier'] = patched_simulator_slice_identifier
+      slice_plist_to_edit['SupportedArchitectures'] << 'arm64'
 
-      FileUtils.rm_rf(xcframework_path.join(patched_arm_slice_identifier))
-      FileUtils.cp_r(xcframework_path.join(original_arm_slice_identifier), xcframework_path.join(patched_arm_slice_identifier))
+      `xcrun lipo \"#{original_arm_slice.binary_path}\" -thin arm64 -output \"#{simulator_slice.binary_path}.arm64\"`
+      `xcrun lipo \"#{simulator_slice.binary_path}\" \"#{simulator_slice.binary_path}.arm64\" -create -output \"#{simulator_slice.binary_path}\"`
+
+      FileUtils.rm_rf("#{simulator_slice.binary_path}.arm64")
+      FileUtils.rm_rf(xcframework_path.join(patched_simulator_slice_identifier))
+      FileUtils.mv(xcframework_path.join(simulator_slice.identifier), xcframework_path.join(patched_simulator_slice_identifier))
 
       Xcodeproj::Plist.write_to_path(plist, xcframework_path.join('Info.plist'))
 
       xcframework = Pod::Xcode::XCFramework.open_xcframework(xcframework_path)
 
-      slice = xcframework.slices.find { |s| s.identifier == patched_arm_slice_identifier }
+      slice = xcframework.slices.find { |s| s.identifier == patched_simulator_slice_identifier }
 
       ArmPatcher.patch_arm_binary(slice)
       ArmPatcher.cleanup_unused_archs(slice)
