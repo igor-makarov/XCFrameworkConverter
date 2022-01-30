@@ -42,6 +42,8 @@ module XCFrameworkConverter
           before_rename.map { |f| pod_path.join(f) }
         end.flatten.uniq
 
+        convert_xcframeworks_if_present(frameworks_to_convert)
+
         remember_spec_as_patched(spec) unless frameworks_to_convert.empty?
 
         remove_troublesome_xcconfig_items(spec)
