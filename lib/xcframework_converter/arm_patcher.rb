@@ -56,7 +56,9 @@ module XCFrameworkConverter
           file = MachO::MachOFile.new(object_file)
           sdk_version = file[:LC_VERSION_MIN_IPHONEOS].first.version_string.to_i
           `xcrun swift \"#{arm2sim_path}\" \"#{object_file}\" \"#{sdk_version}\" \"#{sdk_version}\"`
+          $stderr.printf '.'
         end
+        $stderr.puts
         `cd \"#{extracted_path_dir}\" ; ar crv \"#{extracted_path}\" *.o`
 
         `xcrun lipo \"#{slice.binary_path}\" -replace arm64 \"#{extracted_path}\" -output \"#{slice.binary_path}\"`
