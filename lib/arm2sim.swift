@@ -76,9 +76,14 @@ enum Transmogrifier {
         segment.vmsize += UInt64(offset)
         
         let offsetSections = sections.map { section -> section_64 in
+            if section.flags == UInt32(S_ZEROFILL) {
+                return section
+            }
+            //print("\(section.fullSectionName) (before): \(section.debugDescription)")
             var section = section
             section.offset += UInt32(offset)
             section.reloff += section.reloff > 0 ? UInt32(offset) : 0
+            //print("\(section.fullSectionName) (after) : \(section.debugDescription)")
             return section
         }
         
@@ -158,6 +163,49 @@ enum Transmogrifier {
         // save back to disk
         try! reworkedData.write(to: URL(fileURLWithPath: path))
     }
+}
+
+extension section_64 {
+    var segmentName: String { convertIntTupleToString(segname) }
+    var sectionName: String { convertIntTupleToString(sectname) }
+    var fullSectionName: String { "\(segmentName)/\(sectionName)" }
+
+    var debugDescription: String {
+        "flags = \(UInt8(flags & 0xFF).binaryDescription), offset = \(offset), reloff = \(reloff)"
+    }
+}
+
+extension BinaryInteger {
+    var binaryDescription: String {
+        var binaryString = ""
+        var internalNumber = self
+        var counter = 0
+
+        for _ in (1...self.bitWidth) {
+            binaryString.insert(contentsOf: "\(internalNumber & 1)", at: binaryString.startIndex)
+            internalNumber >>= 1
+            counter += 1
+            if counter % 4 == 0 && counter != self.bitWidth {
+                binaryString.insert(contentsOf: " ", at: binaryString.startIndex)
+            }
+        }
+
+        return binaryString
+    }
+}
+
+func convertIntTupleToString(_ name : Any) -> String {
+  var returnString = ""
+  let mirror = Mirror(reflecting: name)
+  for child in mirror.children {
+    guard let val = child.value as? Int8,
+      val != 0 else {
+        break
+    }
+    returnString.append(Character(UnicodeScalar(UInt8(val))))
+  }
+
+  return returnString
 }
 
 let binaryPath = CommandLine.arguments[1]
