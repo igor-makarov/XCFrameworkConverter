@@ -42,10 +42,12 @@ module XCFrameworkConverter
           before_rename.map { |f| pod_path.join(f) }
         end.flatten.uniq
 
-        convert_xcframeworks_if_present(frameworks_to_convert)
+        remember_spec_as_patched(spec) unless frameworks_to_convert.empty?
 
         remove_troublesome_xcconfig_items(spec)
       end
+
+      warn "Specs with patched XCFrameworks: #{@patched_specs.sort.join(', ')}"
     end
 
     def convert_xcframeworks_if_present(frameworks_to_convert)
@@ -61,12 +63,27 @@ module XCFrameworkConverter
     end
 
     def remove_troublesome_xcconfig_items(spec)
-      # some pods put these as a way to NOT support arm64 sim
-      # may stop working if a pod decides to put these in a platform proxy
-      spec.attributes_hash['pod_target_xcconfig']&.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
-      spec.attributes_hash['user_target_xcconfig']&.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
-      spec.attributes_hash['pod_target_xcconfig']&.delete('VALID_ARCHS[sdk=iphonesimulator*]')
-      spec.attributes_hash['user_target_xcconfig']&.delete('VALID_ARCHS[sdk=iphonesimulator*]')
+      xcconfigs = %w[
+        pod_target_xcconfig
+        user_target_xcconfig
+      ].map { |key| spec.attributes_hash[key] }.compact
+
+      xcconfigs.each do |xcconfig|
+        # some pods put these as a way to NOT support arm64 sim
+        # may stop working if a pod decides to put these in a platform proxy
+        excluded_arm = xcconfig['EXCLUDED_ARCHS[sdk=iphonesimulator*]']&.include?('arm64')
+        not_inlcuded_arm = xcconfig['VALID_ARCHS[sdk=iphonesimulator*]'] && !xcconfig['VALID_ARCHS[sdk=iphonesimulator*]'].include?('arm64')
+
+        remember_spec_as_patched(spec) if excluded_arm || not_inlcuded_arm
+
+        xcconfig.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
+        xcconfig.delete('VALID_ARCHS[sdk=iphonesimulator*]')
+      end
+    end
+
+    def remember_spec_as_patched(spec)
+      @patched_specs ||= Set.new
+      @patched_specs << spec.root.name
     end
   end
 end
