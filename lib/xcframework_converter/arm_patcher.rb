@@ -42,8 +42,18 @@ module XCFrameworkConverter
         extracted_path.rmtree
       end
 
+      def gem_path(fragment)
+        Pathname.new(__FILE__).dirname.join('../..').join(fragment)
+      end
+
       def arm2sim_path
-        Pathname.new(__FILE__).dirname.join('../arm2sim.swift')
+        @arm2sim_path ||= begin
+          warn 'Pre-building `arm64-to-sim` with SwiftPM'
+          Dir.chdir gem_path('lib/arm64-to-sim') do
+            system 'xcrun swift build -c release --arch arm64 --arch x86_64'
+          end
+          gem_path('lib/arm64-to-sim/.build/apple/Products/Release/arm64-to-sim')
+        end
       end
 
       def patch_arm_binary_static(slice)
@@ -55,7 +65,7 @@ module XCFrameworkConverter
         Dir[extracted_path_dir.join('*.o')].each do |object_file|
           file = MachO::MachOFile.new(object_file)
           sdk_version = file[:LC_VERSION_MIN_IPHONEOS].first.version_string.to_i
-          `xcrun swift \"#{arm2sim_path}\" \"#{object_file}\" \"#{sdk_version}\" \"#{sdk_version}\"`
+          `\"#{arm2sim_path}\" \"#{object_file}\" \"#{sdk_version}\" \"#{sdk_version}\"`
           $stderr.printf '.'
         end
         $stderr.puts
