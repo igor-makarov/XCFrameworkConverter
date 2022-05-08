@@ -70,22 +70,19 @@ module XCFrameworkConverter
           object_files.keys.each do |object_file|
             file_shard = Digest::MD5.hexdigest(object_file).to_s[0..2]
             file_dir = extracted_path_dir.join("#{index}-#{file_shard}")
+            file_path = file_dir.join(object_file)
             file_dir.mkdir unless file_dir.exist?
-            `ar p \"#{extracted_path}\" \"#{object_file}\" > \"#{file_dir.join(object_file)}\"`
+            `ar p \"#{extracted_path}\" \"#{object_file}\" > \"#{file_path}\"`
+            macho_file = MachO::MachOFile.new(file_path)
+            sdk_version = macho_file[:LC_VERSION_MIN_IPHONEOS].first.version_string.to_i
+            `\"#{arm2sim_path}\" \"#{file_path}\" \"#{sdk_version}\" \"#{sdk_version}\"`  
             $stderr.printf '.'
-            processed_files << file_dir.join(object_file)
+            processed_files << file_path
           end
           `ar d \"#{extracted_path}\" #{object_files.keys.map(&:shellescape).join(' ')}`
           $stderr.printf '#'
           object_files.reject! { |_, count| count <= index + 1 }
           index += 1
-        end
-        $stderr.puts
-        extracted_path_dir.glob('*/*.o').sort.each do |object_file|
-          file = MachO::MachOFile.new(object_file)
-          sdk_version = file[:LC_VERSION_MIN_IPHONEOS].first.version_string.to_i
-          `\"#{arm2sim_path}\" \"#{object_file}\" \"#{sdk_version}\" \"#{sdk_version}\"`
-          $stderr.printf '.'
         end
         $stderr.puts
         `cd \"#{extracted_path_dir}\" ; ar cqv \"#{extracted_path}\" #{processed_files.map(&:shellescape).join(' ')}`
