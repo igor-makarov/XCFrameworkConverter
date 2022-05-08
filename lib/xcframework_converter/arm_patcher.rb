@@ -2,7 +2,9 @@
 
 require 'cocoapods'
 require 'cocoapods/xcode/xcframework'
+require 'digest/md5'
 require 'fileutils'
+require 'shellwords'
 require 'xcodeproj'
 
 # rubocop:disable Metrics/AbcSize
@@ -60,17 +62,33 @@ module XCFrameworkConverter
         extracted_path = slice.path.join('arm64.a')
         `xcrun lipo \"#{slice.binary_path}\" -thin arm64 -output \"#{extracted_path}\"`
         extracted_path_dir = slice.path.join('arm64-objects')
-        extracted_path_dir.mkdir
-        `cd \"#{extracted_path_dir}\" ; ar x \"#{extracted_path}\"`
-        Dir[extracted_path_dir.join('*.o')].each do |object_file|
+        extracted_path_dir.mkdir        
+        object_files = `ar t \"#{extracted_path}\"`.split("\n").map(&:chomp).sort.select { |o| o.end_with?('.o') }.tally
+        processed_files = []
+        index = 0
+        while object_files.any? do
+          object_files.keys.each do |object_file|
+            file_shard = Digest::MD5.hexdigest(object_file).to_s[0..2]
+            file_dir = extracted_path_dir.join("#{index}-#{file_shard}")
+            file_dir.mkdir unless file_dir.exist?
+            `ar p \"#{extracted_path}\" \"#{object_file}\" > \"#{file_dir.join(object_file)}\"`
+            $stderr.printf '.'
+            processed_files << file_dir.join(object_file)
+          end
+          `ar d \"#{extracted_path}\" #{object_files.keys.map(&:shellescape).join(' ')}`
+          $stderr.printf '#'
+          object_files.reject! { |_, count| count <= index + 1 }
+          index += 1
+        end
+        $stderr.puts
+        extracted_path_dir.glob('*/*.o').sort.each do |object_file|
           file = MachO::MachOFile.new(object_file)
           sdk_version = file[:LC_VERSION_MIN_IPHONEOS].first.version_string.to_i
           `\"#{arm2sim_path}\" \"#{object_file}\" \"#{sdk_version}\" \"#{sdk_version}\"`
           $stderr.printf '.'
         end
         $stderr.puts
-        `cd \"#{extracted_path_dir}\" ; ar crv \"#{extracted_path}\" *.o`
-
+        `cd \"#{extracted_path_dir}\" ; ar cqv \"#{extracted_path}\" #{processed_files.map(&:shellescape).join(' ')}`
         `xcrun lipo \"#{slice.binary_path}\" -replace arm64 \"#{extracted_path}\" -output \"#{slice.binary_path}\"`
         extracted_path_dir.rmtree
         extracted_path.rmtree
