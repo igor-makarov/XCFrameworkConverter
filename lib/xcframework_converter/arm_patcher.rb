@@ -31,6 +31,17 @@ module XCFrameworkConverter
         end
       end
 
+      def fix_bad_arm_binary(slice)
+        require 'macho'
+
+        case slice.build_type.linkage
+        when :dynamic
+          return
+        when :static
+          fix_bad_arm_binary_static(slice)
+        end
+      end
+
       private
 
       def patch_arm_binary_dynamic(slice)
@@ -55,6 +66,16 @@ module XCFrameworkConverter
             system 'xcrun swift build -c release --arch arm64 --arch x86_64'
           end
           gem_path('lib/arm64-to-sim/.build/apple/Products/Release/arm64-to-sim')
+        end
+      end
+
+      def patch_bad_arm_path
+        @patch_bad_arm_path ||= begin
+          warn 'Pre-building `arm64-to-sim` with SwiftPM'
+          Dir.chdir gem_path('lib/arm64-to-sim') do
+            system 'xcrun swift build -c release --arch arm64 --arch x86_64'
+          end
+          gem_path('lib/arm64-to-sim/.build/apple/Products/Release/patch-bad-arm64')
         end
       end
 
@@ -91,6 +112,36 @@ module XCFrameworkConverter
         extracted_path.rmtree
       end
 
+      def fix_bad_arm_binary_static(slice)
+        extracted_path = slice.path.join('arm64.a')
+        `xcrun lipo \"#{slice.binary_path}\" -thin arm64 -output \"#{extracted_path}\"`
+        extracted_path_dir = slice.path.join('arm64-objects')
+        extracted_path_dir.mkdir        
+        object_files = `ar t \"#{extracted_path}\"`.split("\n").map(&:chomp).sort.select { |o| o.end_with?('.o') }.group_by(&:itself).transform_values(&:count)
+        processed_files = []
+        index = 0
+        while object_files.any? do
+          object_files.keys.each do |object_file|
+            file_shard = Digest::MD5.hexdigest(object_file).to_s[0..2]
+            file_dir = extracted_path_dir.join("#{index}-#{file_shard}")
+            file_path = file_dir.join(object_file)
+            file_dir.mkdir unless file_dir.exist?
+            `ar p \"#{extracted_path}\" \"#{object_file}\" > \"#{file_path}\"`
+            `\"#{patch_bad_arm_path}\" \"#{file_path}\"`  
+            $stderr.printf '.'
+            processed_files << file_path
+          end
+          `ar d \"#{extracted_path}\" #{object_files.keys.map(&:shellescape).join(' ')}`
+          $stderr.printf '#'
+          object_files.reject! { |_, count| count <= index + 1 }
+          index += 1
+        end
+        $stderr.puts
+        `cd \"#{extracted_path_dir}\" ; ar cqv \"#{extracted_path}\" #{processed_files.map(&:shellescape).join(' ')}`
+        `xcrun lipo \"#{slice.binary_path}\" -replace arm64 \"#{extracted_path}\" -output \"#{slice.binary_path}\"`
+        extracted_path_dir.rmtree
+        extracted_path.rmtree
+      end
       public
 
       def cleanup_unused_archs(slice)

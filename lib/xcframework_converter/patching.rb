@@ -25,9 +25,10 @@ module XCFrameworkConverter
         slice.supported_archs.include?('arm64')
       end
 
-      original_arm_slice_identifier = xcframework.slices.find do |slice|
+      original_arm_slice = xcframework.slices.find do |slice|
         slice.platform == :ios && slice.supported_archs.include?('arm64')
-      end.identifier
+      end
+      original_arm_slice_identifier = original_arm_slice.identifier
 
       patched_arm_slice_identifier = 'ios-arm64-simulator'
 
@@ -49,6 +50,7 @@ module XCFrameworkConverter
 
       slice = xcframework.slices.find { |s| s.identifier == patched_arm_slice_identifier }
 
+      ArmPatcher.fix_bad_arm_binary(original_arm_slice)
       ArmPatcher.patch_arm_binary(slice)
       ArmPatcher.cleanup_unused_archs(slice)
 

@@ -35,6 +35,7 @@ module XCFrameworkConverter
       final_framework = Pod::Xcode::XCFramework.open_xcframework(xcframework_path)
       final_framework.slices.each do |slice|
         ArmPatcher.patch_arm_binary(slice) if slice.platform == :ios && slice.platform_variant == :simulator
+        ArmPatcher.fix_bad_arm_binary(slice) if slice.platform == :ios && slice.platform_variant.nil?
         ArmPatcher.cleanup_unused_archs(slice)
       end
     end
