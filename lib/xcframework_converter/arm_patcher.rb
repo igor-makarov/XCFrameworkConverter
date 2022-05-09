@@ -7,7 +7,7 @@ require 'fileutils'
 require 'shellwords'
 require 'xcodeproj'
 
-# rubocop:disable Metrics/AbcSize
+# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
 module XCFrameworkConverter
   # Patches a binary (static or dynamic), turning an arm64-device into an arm64-simualtor.
@@ -62,11 +62,13 @@ module XCFrameworkConverter
         extracted_path = slice.path.join('arm64.a')
         `xcrun lipo \"#{slice.binary_path}\" -thin arm64 -output \"#{extracted_path}\"`
         extracted_path_dir = slice.path.join('arm64-objects')
-        extracted_path_dir.mkdir        
-        object_files = `ar t \"#{extracted_path}\"`.split("\n").map(&:chomp).sort.select { |o| o.end_with?('.o') }.group_by(&:itself).transform_values(&:count)
+        extracted_path_dir.mkdir
+        object_files = `ar t \"#{extracted_path}\"`.split("\n").map(&:chomp).sort
+                                                   .select { |o| o.end_with?('.o') }
+                                                   .group_by(&:itself).transform_values(&:count)
         processed_files = []
         index = 0
-        while object_files.any? do
+        while object_files.any?
           object_files.keys.each do |object_file|
             file_shard = Digest::MD5.hexdigest(object_file).to_s[0..2]
             file_dir = extracted_path_dir.join("#{index}-#{file_shard}")
@@ -75,7 +77,7 @@ module XCFrameworkConverter
             `ar p \"#{extracted_path}\" \"#{object_file}\" > \"#{file_path}\"`
             macho_file = MachO::MachOFile.new(file_path)
             sdk_version = macho_file[:LC_VERSION_MIN_IPHONEOS].first.version_string.to_i
-            `\"#{arm2sim_path}\" \"#{file_path}\" \"#{sdk_version}\" \"#{sdk_version}\"`  
+            `\"#{arm2sim_path}\" \"#{file_path}\" \"#{sdk_version}\" \"#{sdk_version}\"`
             $stderr.printf '.'
             processed_files << file_path
           end
