@@ -25,7 +25,6 @@ module XCFrameworkConverter
         when :static
           patch_arm_binary_static(slice)
         end
-        
         slice.path.glob('**/arm64*.swiftinterface').each do |interface_file|
           `sed -i '' -E 's/target arm64-apple-ios([0-9.]+) /target arm64-apple-ios\\1-simulator /g' "#{interface_file}"`
         end
