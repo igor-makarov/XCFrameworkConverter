@@ -37,9 +37,8 @@ module XCFrameworkConverter
         extracted_path = slice.path.join('arm64.dylib')
         `xcrun lipo \"#{slice.binary_path}\" -thin arm64 -output \"#{extracted_path}\"`
 
-        file = MachO::MachOFile.new(extracted_path)
-        sdk_version = file[:LC_VERSION_MIN_IPHONEOS].first.version_string
-        `xcrun vtool -arch arm64 -set-build-version 7 #{sdk_version} #{sdk_version} -replace -output \"#{extracted_path}\" \"#{extracted_path}\"`
+        minos_version, sdk_version = version_strings(extracted_path).map(&:to_i)
+        `xcrun vtool -arch arm64 -set-build-version 7 #{minos_version} #{sdk_version} -replace -output \"#{extracted_path}\" \"#{extracted_path}\"`
         `xcrun lipo \"#{slice.binary_path}\" -replace arm64 \"#{extracted_path}\" -output \"#{slice.binary_path}\"`
         extracted_path.rmtree
       end
