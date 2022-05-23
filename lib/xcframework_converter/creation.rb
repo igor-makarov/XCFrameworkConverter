@@ -20,21 +20,24 @@ module XCFrameworkConverter
       Pathname.new(__FILE__).dirname.join('../xcframework_template.plist')
     end
 
-    def convert_framework_to_xcframework(path)
+    def convert_framework_to_xcframework(path, platform_name)
       plist = Xcodeproj::Plist.read_from_path(plist_template_path)
       xcframework_path = Pathname.new(path).sub_ext('.xcframework')
       xcframework_path.mkdir
       plist['AvailableLibraries'].each do |slice|
-        slice_path = xcframework_path.join(slice['LibraryIdentifier'])
+        slice_library_identifier = slice['LibraryIdentifier'].sub("platform", "#{platform_name}")
+        slice_path = xcframework_path.join(slice_library_identifier)
         slice_path.mkdir
         slice['LibraryPath'] = File.basename(path)
+        slice['SupportedPlatform'] = platform_name
+        slice['LibraryIdentifier'] = slice_library_identifier
         FileUtils.cp_r(path, slice_path)
       end
       Xcodeproj::Plist.write_to_path(plist, xcframework_path.join('Info.plist'))
       FileUtils.rm_rf(path)
       final_framework = Pod::Xcode::XCFramework.open_xcframework(xcframework_path)
       final_framework.slices.each do |slice|
-        ArmPatcher.patch_arm_binary(slice) if slice.platform == :ios && slice.platform_variant == :simulator
+        ArmPatcher.patch_arm_binary(slice) if slice.platform.name == platform_name && slice.platform_variant == :simulator
         ArmPatcher.cleanup_unused_archs(slice)
       end
     end
