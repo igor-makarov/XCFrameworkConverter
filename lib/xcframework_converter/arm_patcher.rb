@@ -37,9 +37,8 @@ module XCFrameworkConverter
         extracted_path = slice.path.join('arm64.dylib')
         `xcrun lipo \"#{slice.binary_path}\" -thin arm64 -output \"#{extracted_path}\"`
 
-        file = MachO::MachOFile.new(extracted_path)
-        sdk_version = file[:LC_VERSION_MIN_IPHONEOS].first.version_string
-        `xcrun vtool -arch arm64 -set-build-version 7 #{sdk_version} #{sdk_version} -replace -output \"#{extracted_path}\" \"#{extracted_path}\"`
+        minos_version, sdk_version = version_strings(extracted_path).map(&:to_i)
+        `xcrun vtool -arch arm64 -set-build-version 7 #{minos_version} #{sdk_version} -replace -output \"#{extracted_path}\" \"#{extracted_path}\"`
         `xcrun lipo \"#{slice.binary_path}\" -replace arm64 \"#{extracted_path}\" -output \"#{slice.binary_path}\"`
         extracted_path.rmtree
       end
@@ -63,34 +62,59 @@ module XCFrameworkConverter
         `xcrun lipo \"#{slice.binary_path}\" -thin arm64 -output \"#{extracted_path}\"`
         extracted_path_dir = slice.path.join('arm64-objects')
         extracted_path_dir.mkdir
-        object_files = `ar t \"#{extracted_path}\"`.split("\n").map(&:chomp).sort
-                                                   .select { |o| o.end_with?('.o') }
-                                                   .group_by(&:itself).transform_values(&:count)
-        processed_files = []
-        index = 0
-        while object_files.any?
-          object_files.keys.each do |object_file|
-            file_shard = Digest::MD5.hexdigest(object_file).to_s[0..2]
-            file_dir = extracted_path_dir.join("#{index}-#{file_shard}")
-            file_path = file_dir.join(object_file)
-            file_dir.mkdir unless file_dir.exist?
-            `ar p \"#{extracted_path}\" \"#{object_file}\" > \"#{file_path}\"`
-            macho_file = MachO::MachOFile.new(file_path)
-            sdk_version = macho_file[:LC_VERSION_MIN_IPHONEOS].first.version_string.to_i
-            `\"#{arm2sim_path}\" \"#{file_path}\" \"#{sdk_version}\" \"#{sdk_version}\"`
-            $stderr.printf '.'
-            processed_files << file_path
+        if macho_file_type(extracted_path) == :object
+          patch_object_file(extracted_path)
+        else
+          object_files = `ar t \"#{extracted_path}\"`.split("\n").map(&:chomp).sort
+                                                     .select { |o| o.end_with?('.o') }
+                                                     .group_by(&:itself).transform_values(&:count)
+          processed_files = []
+          index = 0
+          while object_files.any?
+            object_files.keys.each do |object_file|
+              file_shard = Digest::MD5.hexdigest(object_file).to_s[0..2]
+              file_dir = extracted_path_dir.join("#{index}-#{file_shard}")
+              file_path = file_dir.join(object_file)
+              file_dir.mkdir unless file_dir.exist?
+              `ar p \"#{extracted_path}\" \"#{object_file}\" > \"#{file_path}\"`
+              patch_object_file(file_path)
+              $stderr.printf '.'
+              processed_files << file_path
+            end
+            `ar d \"#{extracted_path}\" #{object_files.keys.map(&:shellescape).join(' ')}`
+            $stderr.printf '#'
+            object_files.reject! { |_, count| count <= index + 1 }
+            index += 1
           end
-          `ar d \"#{extracted_path}\" #{object_files.keys.map(&:shellescape).join(' ')}`
-          $stderr.printf '#'
-          object_files.reject! { |_, count| count <= index + 1 }
-          index += 1
+          $stderr.puts
+          `cd \"#{extracted_path_dir}\" ; ar cqv \"#{extracted_path}\" #{processed_files.map(&:shellescape).join(' ')}`
         end
-        $stderr.puts
-        `cd \"#{extracted_path_dir}\" ; ar cqv \"#{extracted_path}\" #{processed_files.map(&:shellescape).join(' ')}`
         `xcrun lipo \"#{slice.binary_path}\" -replace arm64 \"#{extracted_path}\" -output \"#{slice.binary_path}\"`
         extracted_path_dir.rmtree
         extracted_path.rmtree
+      end
+
+      def macho_file_type(file_path)
+        MachO.open(file_path).filetype
+      rescue MachO::MagicError
+        nil
+      end
+
+      def patch_object_file(file_path)
+        minos_version, sdk_version = version_strings(file_path).map(&:to_i)
+        `\"#{arm2sim_path}\" \"#{file_path}\" \"#{minos_version}\" \"#{sdk_version}\"`
+      end
+
+      def version_strings(file_path)
+        macho_file = MachO::MachOFile.new(file_path)
+        if (version_min_command = macho_file.load_commands.find { |c| c.is_a?(MachO::LoadCommands::VersionMinCommand) })
+          return [version_min_command.version_string, version_min_command.sdk_string]
+        end
+        if (build_version_command = macho_file.load_commands.find { |c| c.is_a?(MachO::LoadCommands::BuildVersionCommand) })
+          return [build_version_command.minos_string, build_version_command.sdk_string]
+        end
+
+        raise "Could not find version strings in #{file_path}"
       end
 
       public
