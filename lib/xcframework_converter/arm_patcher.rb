@@ -25,7 +25,6 @@ module XCFrameworkConverter
         when :static
           patch_arm_binary_static(slice)
         end
-
         slice.path.glob('**/arm64*.swiftinterface').each do |interface_file|
           `sed -i '' -E 's/target arm64-apple-ios([0-9.]+) /target arm64-apple-ios\\1-simulator /g' "#{interface_file}"`
         end
@@ -38,7 +37,11 @@ module XCFrameworkConverter
         `xcrun lipo \"#{slice.binary_path}\" -thin arm64 -output \"#{extracted_path}\"`
 
         file = MachO::MachOFile.new(extracted_path)
-        sdk_version = file[:LC_VERSION_MIN_IPHONEOS].first.version_string
+        first_object = file[:LC_VERSION_MIN_IPHONEOS].first
+        sdk_version = "1.0.0"
+        unless first_object.nil? || first_object == 0
+          sdk_version = first_object.version_string
+        end
         `xcrun vtool -arch arm64 -set-build-version 7 #{sdk_version} #{sdk_version} -replace -output \"#{extracted_path}\" \"#{extracted_path}\"`
         `xcrun lipo \"#{slice.binary_path}\" -replace arm64 \"#{extracted_path}\" -output \"#{slice.binary_path}\"`
         extracted_path.rmtree

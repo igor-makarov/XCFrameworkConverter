@@ -17,7 +17,7 @@ require 'xcodeproj'
 # dylibs: https://bogo.wtf/arm64-to-sim-dylibs.html
 module XCFrameworkConverter
   class << self
-    def convert_frameworks_to_xcframeworks!(installer, platform_name = "ios")
+    def convert_frameworks_to_xcframeworks!(installer, current_platform = :ios)
       installer.analysis_result.specifications.each do |spec|
         next if spec.source && spec.local?
 
@@ -29,7 +29,7 @@ module XCFrameworkConverter
                   .map { |f| pod_path.join(f) }
         end.flatten.uniq
 
-        patch_xcframeworks_if_needed(xcframeworks_to_patch, platform_name)
+        patch_xcframeworks_if_needed(xcframeworks_to_patch, current_platform)
 
         frameworks_to_convert = spec.available_platforms.map do |platform|
           consumer = Pod::Specification::Consumer.new(spec, platform)
@@ -42,7 +42,7 @@ module XCFrameworkConverter
           before_rename.map { |f| pod_path.join(f) }
         end.flatten.uniq
 
-        convert_xcframeworks_if_present(frameworks_to_convert, platform_name)
+        convert_xcframeworks_if_present(frameworks_to_convert, current_platform)
 
         remember_spec_as_patched(spec) unless frameworks_to_convert.empty?
 
@@ -52,15 +52,15 @@ module XCFrameworkConverter
       warn "Specs with patched XCFrameworks: #{@patched_specs.sort.join(', ')}"
     end
 
-    def convert_xcframeworks_if_present(frameworks_to_convert, platform_name)
+    def convert_xcframeworks_if_present(frameworks_to_convert, current_platform)
       frameworks_to_convert.each do |path|
-        convert_framework_to_xcframework(path, platform_name) if Dir.exist?(path)
+        convert_framework_to_xcframework(path, current_platform) if Dir.exist?(path)
       end
     end
 
-    def patch_xcframeworks_if_needed(xcframeworks, platform_name)
+    def patch_xcframeworks_if_needed(xcframeworks, current_platform)
       xcframeworks.each do |path|
-        patch_xcframework(path, platform_name) if Dir.exist?(path)
+        patch_xcframework(path, current_platform) if Dir.exist?(path)
       end
     end
 
