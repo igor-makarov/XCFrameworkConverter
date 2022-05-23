@@ -38,7 +38,6 @@ module XCFrameworkConverter
 
         minos_version, sdk_version = version_strings(extracted_path).map(&:to_i)
         `xcrun vtool -arch arm64 -set-build-version 7 #{minos_version} #{sdk_version} -replace -output \"#{extracted_path}\" \"#{extracted_path}\"`
-
         `xcrun lipo \"#{slice.binary_path}\" -replace arm64 \"#{extracted_path}\" -output \"#{slice.binary_path}\"`
         extracted_path.rmtree
       end
