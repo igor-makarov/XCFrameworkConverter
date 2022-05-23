@@ -109,7 +109,7 @@ module XCFrameworkConverter
       def version_strings(file_path)
         macho_file = MachO::MachOFile.new(file_path)
         if (version_min_command = macho_file.load_commands.find { |c| c.is_a?(MachO::LoadCommands::VersionMinCommand) })
-          return [version_min_command.version_string, version_min_command.version_string]
+          return [version_min_command.version_string, version_min_command.sdk_string]
         end
         if (build_version_command = macho_file.load_commands.find { |c| c.is_a?(MachO::LoadCommands::BuildVersionCommand) })
           return [build_version_command.minos_string, build_version_command.sdk_string]
