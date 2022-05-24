@@ -18,18 +18,33 @@ module XCFrameworkConverter
   class << self
     def patch_xcframework(xcframework_path)
       xcframework = Pod::Xcode::XCFramework.open_xcframework(xcframework_path)
+      slices_to_convert = xcframework.slices.select do |slice|
+        slice.platform != :osx &&
+          slice.platform_variant != :simulator &&
+          slice.supported_archs.include?('arm64')
+      end
+
+      slices_to_convert.each do |slice|
+        patch_xcframework_impl(xcframework_path, slice.platform.name)
+      end
+    end
+
+    private
+
+    def patch_xcframework_impl(xcframework_path, platform)
+      xcframework = Pod::Xcode::XCFramework.open_xcframework(xcframework_path)
 
       return nil if xcframework.slices.any? do |slice|
-        slice.platform == :ios &&
+        slice.platform == platform &&
         slice.platform_variant == :simulator &&
         slice.supported_archs.include?('arm64')
       end
 
       original_arm_slice_identifier = xcframework.slices.find do |slice|
-        slice.platform == :ios && slice.supported_archs.include?('arm64')
+        slice.platform == platform && slice.supported_archs.include?('arm64')
       end.identifier
 
-      patched_arm_slice_identifier = 'ios-arm64-simulator'
+      patched_arm_slice_identifier = "#{platform}-arm64-simulator"
 
       warn "Will patch #{xcframework_path}: #{original_arm_slice_identifier} -> #{patched_arm_slice_identifier}"
 

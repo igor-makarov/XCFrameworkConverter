@@ -6,7 +6,7 @@
 	<array>
 		<dict>
 			<key>LibraryIdentifier</key>
-			<string>ios-arm64_x86_64-simulator</string>
+			<string>platform-arm64_x86_64-simulator</string>
 			<key>LibraryPath</key>
 			<string>Placeholder.framework</string>
 			<key>SupportedArchitectures</key>
@@ -21,7 +21,7 @@
 		</dict>
 		<dict>
 			<key>LibraryIdentifier</key>
-			<string>ios-arm64_armv7</string>
+			<string>platform-arm64_armv7</string>
 			<key>LibraryPath</key>
 			<string>Placeholder.framework</string>
 			<key>SupportedArchitectures</key>
@@ -30,7 +30,7 @@
 				<string>armv7</string>
 			</array>
 			<key>SupportedPlatform</key>
-			<string>ios</string>
+			<string>platform</string>
 		</dict>
 	</array>
 	<key>CFBundlePackageType</key>
