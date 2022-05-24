@@ -19,6 +19,7 @@ module XCFrameworkConverter
     def patch_xcframework(xcframework_path)
       xcframework = Pod::Xcode::XCFramework.open_xcframework(xcframework_path)
       slices_to_convert = xcframework.slices.select do |slice|
+        slice.platform != :osx &&
         slice.platform_variant != :simulator &&
         slice.supported_archs.include?('arm64')
       end
