@@ -5,8 +5,10 @@ require 'bundler/setup'
 require 'xcframework_converter'
 
 if ARGV.empty?
-  warn 'Usage: xcfconvert <path/to/Framework.framework>'
+  warn 'Usage: xcfconvert <path/to/Framework.framework> [ios|tvos|watchos]'
   exit 1
 end
 
-XCFrameworkConverter.convert_framework_to_xcframework(Pathname.new(ARGV[0]).realpath)
+path = Pathname.new(ARGV.shift).realpath
+platform = ARGV.shift&.to_sym || :ios
+XCFrameworkConverter.convert_framework_to_xcframework(path, platform)
