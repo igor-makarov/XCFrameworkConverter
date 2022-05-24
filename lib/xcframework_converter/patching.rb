@@ -16,7 +16,21 @@ require 'xcodeproj'
 # dylibs: https://bogo.wtf/arm64-to-sim-dylibs.html
 module XCFrameworkConverter
   class << self
-    def patch_xcframework(xcframework_path, current_platform)
+    def patch_xcframework(xcframework_path)
+      xcframework = Pod::Xcode::XCFramework.open_xcframework(xcframework_path)
+      slices_to_convert = xcframework.slices.select do |slice|
+        slice.platform_variant != :simulator &&
+        slice.supported_archs.include?('arm64')
+      end
+
+      slices_to_convert.each do |slice|
+        patch_xcframework_impl(xcframework_path, slice.platform.name)
+      end
+    end
+
+    private 
+
+    def patch_xcframework_impl(xcframework_path, current_platform)
       xcframework = Pod::Xcode::XCFramework.open_xcframework(xcframework_path)
 
       return nil if xcframework.slices.any? do |slice|

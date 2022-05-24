@@ -17,7 +17,7 @@ require 'xcodeproj'
 # dylibs: https://bogo.wtf/arm64-to-sim-dylibs.html
 module XCFrameworkConverter
   class << self
-    def convert_frameworks_to_xcframeworks!(installer, current_platform = :ios)
+    def convert_frameworks_to_xcframeworks!(installer)
       installer.analysis_result.specifications.each do |spec|
         next if spec.source && spec.local?
 
@@ -29,7 +29,7 @@ module XCFrameworkConverter
                   .map { |f| pod_path.join(f) }
         end.flatten.uniq
 
-        patch_xcframeworks_if_needed(xcframeworks_to_patch, current_platform)
+        patch_xcframeworks_if_needed(xcframeworks_to_patch)
 
         frameworks_to_convert = spec.available_platforms.map do |platform|
           consumer = Pod::Specification::Consumer.new(spec, platform)
@@ -58,9 +58,9 @@ module XCFrameworkConverter
       end
     end
 
-    def patch_xcframeworks_if_needed(xcframeworks, current_platform)
+    def patch_xcframeworks_if_needed(xcframeworks)
       xcframeworks.each do |path|
-        patch_xcframework(path, current_platform) if Dir.exist?(path)
+        patch_xcframework(path) if Dir.exist?(path)
       end
     end
 
