@@ -25,7 +25,7 @@ module XCFrameworkConverter
       xcframework_path = Pathname.new(path).sub_ext('.xcframework')
       xcframework_path.mkdir
       plist['AvailableLibraries'].each do |slice|
-        slice_library_identifier = slice['LibraryIdentifier'].sub("platform", "#{platform.to_s}")
+        slice_library_identifier = slice['LibraryIdentifier'].sub('platform', platform.to_s)
         slice_path = xcframework_path.join(slice_library_identifier)
         slice_path.mkdir
         slice['LibraryPath'] = File.basename(path)
