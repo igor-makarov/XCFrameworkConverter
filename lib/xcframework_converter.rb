@@ -65,21 +65,31 @@ module XCFrameworkConverter
     end
 
     def remove_troublesome_xcconfig_items(spec)
+      # some pods put these as a way to NOT support arm64 sim
+      # may stop working if a pod decides to put these in a platform proxy
+
       xcconfigs = %w[
         pod_target_xcconfig
         user_target_xcconfig
       ].map { |key| spec.attributes_hash[key] }.compact
 
-      xcconfigs.each do |xcconfig|
-        # some pods put these as a way to NOT support arm64 sim
-        # may stop working if a pod decides to put these in a platform proxy
-        excluded_arm = xcconfig['EXCLUDED_ARCHS[sdk=iphonesimulator*]']&.include?('arm64')
-        not_inlcuded_arm = xcconfig['VALID_ARCHS[sdk=iphonesimulator*]'] && !xcconfig['VALID_ARCHS[sdk=iphonesimulator*]'].include?('arm64')
+      platforms = %w[
+        iphonesimulator
+        appletvsimulator
+        watchsimulator
+      ]
+
+      (xcconfigs.product platforms).each do |xcconfig, platform|
+        excluded_archs_key = "EXCLUDED_ARCHS[sdk=#{platform}*]"
+        inlcuded_arch_key = "VALID_ARCHS[sdk=#{platform}*]"
+
+        excluded_arm = xcconfig[excluded_archs_key]&.include?('arm64')
+        not_inlcuded_arm = xcconfig[inlcuded_arch_key] && !xcconfig[inlcuded_arch_key].include?('arm64')
 
         remember_spec_as_patched(spec) if excluded_arm || not_inlcuded_arm
 
-        xcconfig.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
-        xcconfig.delete('VALID_ARCHS[sdk=iphonesimulator*]')
+        xcconfig.delete(excluded_archs_key)
+        xcconfig.delete(inlcuded_arch_key)
       end
     end
 
