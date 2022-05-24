@@ -39,10 +39,10 @@ module XCFrameworkConverter
           after_rename = before_rename.map { |f| Pathname.new(f).sub_ext('.xcframework').to_s }
           proxy = Pod::Specification::DSL::PlatformProxy.new(spec, platform.symbolic_name)
           proxy.vendored_frameworks = consumer.vendored_frameworks - before_rename + after_rename
-          before_rename.map { |f| pod_path.join(f) }
-        end.flatten.uniq
+          before_rename.map { |f| [pod_path.join(f), platform.symbolic_name] }
+        end.flatten(1).uniq
 
-        convert_xcframeworks_if_present(frameworks_to_convert, current_platform)
+        convert_xcframeworks_if_present(frameworks_to_convert)
 
         remember_spec_as_patched(spec) unless frameworks_to_convert.empty?
 
@@ -52,9 +52,9 @@ module XCFrameworkConverter
       warn "Specs with patched XCFrameworks: #{@patched_specs.sort.join(', ')}"
     end
 
-    def convert_xcframeworks_if_present(frameworks_to_convert, current_platform)
-      frameworks_to_convert.each do |path|
-        convert_framework_to_xcframework(path, current_platform) if Dir.exist?(path)
+    def convert_xcframeworks_if_present(frameworks_to_convert)
+      frameworks_to_convert.each do |path, platform|
+        convert_framework_to_xcframework(path, platform) if Dir.exist?(path)
       end
     end
 
