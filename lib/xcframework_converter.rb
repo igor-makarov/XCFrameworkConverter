@@ -49,7 +49,7 @@ module XCFrameworkConverter
         remove_troublesome_xcconfig_items(spec)
       end
 
-      warn "Specs with patched XCFrameworks: #{@patched_specs.sort.join(', ')}"
+      warn "Specs with patched XCFrameworks: #{patched_specs.sort.join(', ')}"
     end
 
     def convert_xcframeworks_if_present(frameworks_to_convert)
@@ -94,8 +94,11 @@ module XCFrameworkConverter
     end
 
     def remember_spec_as_patched(spec)
+      patched_specs << spec.root.name
+    end
+
+    def patched_specs
       @patched_specs ||= Set.new
-      @patched_specs << spec.root.name
     end
   end
 end
